@@ -1,0 +1,23 @@
+# secrets
+.secrets/
+.env
+.env.*
+
+# node
+node_modules/
+dist/
+.next/
+.vercel/
+
+# anchor
+.target/
+target/
+**/.anchor/
+**/.solana/
+
+# logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

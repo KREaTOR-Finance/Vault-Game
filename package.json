@@ -1,0 +1,17 @@
+{
+  "name": "vault-game",
+  "private": true,
+  "workspaces": [
+    "app",
+    "referee"
+  ],
+  "scripts": {
+    "fmt": "prettier -w .",
+    "lint": "echo \"(todo)\"",
+    "anchor:build": "anchor build",
+    "anchor:test": "anchor test"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}

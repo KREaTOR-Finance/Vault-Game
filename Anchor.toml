@@ -1,0 +1,16 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.devnet]
+vault_game = "B1uj973FayJZYCHVJx3td57zMMBzg4n6UENB3bS24F3t"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = ".secrets/devnet-authority.json"
+
+[scripts]
+# kept minimal; we will add after scaffolding
