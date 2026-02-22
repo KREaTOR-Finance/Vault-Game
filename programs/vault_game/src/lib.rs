@@ -32,7 +32,8 @@ pub mod vault_game {
     /// - If `fee_mint` is None: fees are paid in SOL.
     pub fn create_vault(ctx: Context<CreateVault>, args: CreateVaultArgs) -> Result<()> {
         require!(args.end_ts > Clock::get()?.unix_timestamp, VaultError::BadEndTs);
-        require!(args.guess_fee_amount > 0, VaultError::BadFee);
+        // Allow zero-fee vaults for free-to-play/demo mode.
+        require!(args.guess_fee_amount >= 0, VaultError::BadFee);
 
         let gs = &mut ctx.accounts.global_state;
         let vault = &mut ctx.accounts.vault;
@@ -51,7 +52,12 @@ pub mod vault_game {
         vault.created_at = Clock::get()?.unix_timestamp;
         vault.end_ts = args.end_ts;
         vault.secret_hash = args.secret_hash;
-        vault.guess_fee_amount = args.guess_fee_amount;
+
+        // Guess fee ladder (attempts-only): fee increases 1.2x each attempt.
+        vault.starting_fee_amount = args.guess_fee_amount;
+        vault.current_fee_amount = args.guess_fee_amount;
+        vault.attempt_count = 0;
+
         vault.total_fees_collected = 0;
         vault.winner_fee_pool = 0;
         vault.winner = None;
@@ -66,7 +72,7 @@ pub mod vault_game {
             end_ts: vault.end_ts,
             is_sol_fee: vault.is_sol_fee,
             fee_mint: vault.fee_mint,
-            guess_fee_amount: vault.guess_fee_amount,
+            guess_fee_amount: vault.starting_fee_amount,
         });
 
         Ok(())
@@ -79,7 +85,22 @@ pub mod vault_game {
         require!(Clock::get()?.unix_timestamp <= vault.end_ts, VaultError::VaultExpired);
         require!(vault.is_sol_fee, VaultError::WrongFeeCurrency);
 
-        let (winner_cut, mega_cut) = split_fee(vault.guess_fee_amount)?;
+        let fee = vault.current_fee_amount;
+        if fee == 0 {
+            // Free-to-play attempt: no transfers.
+            vault.attempt_count = vault.attempt_count.checked_add(1).ok_or(VaultError::MathOverflow)?;
+
+            emit!(GuessMade {
+                vault: vault.key(),
+                player: ctx.accounts.player.key(),
+                fee: 0,
+                winner_cut: 0,
+                mega_cut: 0,
+            });
+            return Ok(());
+        }
+
+        let (winner_cut, mega_cut) = split_fee(fee)?;
 
         // 80% -> mega_vault PDA, 20% -> vault PDA (kept for winner payout)
         let ix1 = anchor_lang::solana_program::system_instruction::transfer(
@@ -112,17 +133,20 @@ pub mod vault_game {
 
         vault.total_fees_collected = vault
             .total_fees_collected
-            .checked_add(vault.guess_fee_amount)
+            .checked_add(fee)
             .ok_or(VaultError::MathOverflow)?;
         vault.winner_fee_pool = vault
             .winner_fee_pool
             .checked_add(winner_cut)
             .ok_or(VaultError::MathOverflow)?;
 
+        vault.attempt_count = vault.attempt_count.checked_add(1).ok_or(VaultError::MathOverflow)?;
+        vault.current_fee_amount = next_fee(vault.current_fee_amount)?;
+
         emit!(GuessMade {
             vault: vault.key(),
             player: ctx.accounts.player.key(),
-            fee: vault.guess_fee_amount,
+            fee,
             winner_cut,
             mega_cut,
         });
@@ -138,7 +162,20 @@ pub mod vault_game {
         require!(!vault.is_sol_fee, VaultError::WrongFeeCurrency);
         require_keys_eq!(ctx.accounts.fee_mint.key(), vault.fee_mint, VaultError::WrongFeeMint);
 
-        let fee = vault.guess_fee_amount;
+        let fee = vault.current_fee_amount;
+        if fee == 0 {
+            vault.attempt_count = vault.attempt_count.checked_add(1).ok_or(VaultError::MathOverflow)?;
+
+            emit!(GuessMade {
+                vault: vault.key(),
+                player: ctx.accounts.player.key(),
+                fee: 0,
+                winner_cut: 0,
+                mega_cut: 0,
+            });
+            return Ok(());
+        }
+
         let (winner_cut, mega_cut) = split_fee(fee)?;
 
         let cpi_program = ctx.accounts.token_program.to_account_info();
@@ -170,6 +207,9 @@ pub mod vault_game {
             .winner_fee_pool
             .checked_add(winner_cut)
             .ok_or(VaultError::MathOverflow)?;
+
+        vault.attempt_count = vault.attempt_count.checked_add(1).ok_or(VaultError::MathOverflow)?;
+        vault.current_fee_amount = next_fee(vault.current_fee_amount)?;
 
         emit!(GuessMade {
             vault: vault.key(),
@@ -204,6 +244,12 @@ pub mod vault_game {
 
         Ok(())
     }
+}
+
+fn next_fee(prev_fee: u64) -> Result<u64> {
+    // ceil(prev_fee * 1.2) == ceil(prev_fee * 6 / 5)
+    let n = prev_fee.checked_mul(6).ok_or(VaultError::MathOverflow)?;
+    Ok((n + 4) / 5)
 }
 
 fn split_fee(fee: u64) -> Result<(u64, u64)> {
@@ -368,7 +414,11 @@ pub struct Vault {
     pub end_ts: i64,
     pub secret_hash: [u8; 32],
 
-    pub guess_fee_amount: u64,
+    // Guess fee ladder (attempts-only)
+    pub starting_fee_amount: u64,
+    pub current_fee_amount: u64,
+    pub attempt_count: u64,
+
     pub is_sol_fee: bool,
     pub fee_mint: Pubkey,
 
@@ -381,7 +431,7 @@ pub struct Vault {
     pub bump: u8,
 }
 impl Vault {
-    pub const LEN: usize = 32 + 1 + 8 + 8 + 32 + 8 + 1 + 32 + 8 + 8 + (1 + 32) + (1 + 8) + 1;
+    pub const LEN: usize = 32 + 1 + 8 + 8 + 32 + (8 + 8 + 8) + 1 + 32 + 8 + 8 + (1 + 32) + (1 + 8) + 1;
 }
 
 #[repr(u8)]
