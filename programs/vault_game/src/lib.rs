@@ -19,7 +19,7 @@ pub struct InitializeGlobal<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + GlobalState::INIT_SPACE,
+        space = 8 + GlobalState::LEN,
         seeds = [b"global"],
         bump
     )]
@@ -32,8 +32,11 @@ pub struct InitializeGlobal<'info> {
 }
 
 #[account]
-#[derive(InitSpace)]
 pub struct GlobalState {
     pub authority: Pubkey,
     pub vault_count: u64,
+}
+
+impl GlobalState {
+    pub const LEN: usize = 32 + 8;
 }

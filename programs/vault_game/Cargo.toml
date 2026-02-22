@@ -16,5 +16,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.32.1"
-anchor-spl = "0.32.1"
+anchor-lang = "0.30.1"
+anchor-spl = "0.30.1"
+# Pin transitive blake3 away from 1.8.3 (edition2024) so Solana 1.18.x build toolchain can resolve.
+blake3 = "=1.8.2"
