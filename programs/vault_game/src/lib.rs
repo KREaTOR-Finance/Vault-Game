@@ -33,7 +33,7 @@ pub mod vault_game {
     pub fn create_vault(ctx: Context<CreateVault>, args: CreateVaultArgs) -> Result<()> {
         require!(args.end_ts > Clock::get()?.unix_timestamp, VaultError::BadEndTs);
         // Allow zero-fee vaults for free-to-play/demo mode.
-        require!(args.guess_fee_amount >= 0, VaultError::BadFee);
+        // (u64 is always >= 0)
 
         let gs = &mut ctx.accounts.global_state;
         let vault = &mut ctx.accounts.vault;
