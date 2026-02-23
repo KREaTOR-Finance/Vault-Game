@@ -15,6 +15,9 @@ target/
 **/.anchor/
 **/.solana/
 
+# local validator
+/test-ledger/
+
 # logs
 *.log
 

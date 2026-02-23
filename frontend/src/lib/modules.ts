@@ -9,7 +9,8 @@ export type ConsoleModuleId =
   | "profile"
   | "logs"
   | "help"
-  | "config";
+  | "config"
+  | "enter";
 
 export type ConsoleModule = {
   id: ConsoleModuleId;
@@ -20,6 +21,13 @@ export type ConsoleModule = {
 };
 
 export const CONSOLE_MODULES: ConsoleModule[] = [
+  {
+    id: "enter",
+    label: "ENTER",
+    route: "/",
+    aliases: ["enter", "home", "start"],
+    description: "Entry gate + rules + wallet connect",
+  },
   {
     id: "vaults",
     label: "VAULTS",

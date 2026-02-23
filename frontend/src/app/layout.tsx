@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import MatrixRain from "@/components/console/MatrixRain";
+import SolanaProviders from "@/components/solana/SolanaProviders";
 import "./globals.css";
 
 const mono = JetBrains_Mono({
@@ -22,7 +23,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${mono.variable} antialiased`}>
         <MatrixRain />
-        {children}
+        <SolanaProviders>{children}</SolanaProviders>
       </body>
     </html>
   );

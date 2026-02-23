@@ -1,13 +1,33 @@
+'use client';
+
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import NavigatorPrompt from "@/components/console/NavigatorPrompt";
+import { useWallet } from "@solana/wallet-adapter-react";
+
+function shortKey(k: string) {
+  return k.slice(0, 4) + "…" + k.slice(-4);
+}
 
 function HudLine() {
-  // placeholders for now (wallet/cluster/slot/lat)
+  const { publicKey, connected } = useWallet();
+  const [time, setTime] = useState<string>("");
+
+  useEffect(() => {
+    const tick = () => setTime(new Date().toLocaleTimeString());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-xs text-matrix-dim">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <span>
-          WALLET:<span className="text-matrix"> DISCONNECTED</span>
+          WALLET:
+          <span className="text-matrix">
+            {connected && publicKey ? " " + shortKey(publicKey.toBase58()) : " DISCONNECTED"}
+          </span>
         </span>
         <span>
           CLUSTER:<span className="text-matrix"> DEVNET</span>
@@ -21,7 +41,7 @@ function HudLine() {
           LAT:<span className="text-matrix"> —</span>
         </span>
         <span>
-          TIME:<span className="text-matrix"> {new Date().toLocaleTimeString()}</span>
+          TIME:<span className="text-matrix"> {time || "—"}</span>
         </span>
       </div>
     </div>
