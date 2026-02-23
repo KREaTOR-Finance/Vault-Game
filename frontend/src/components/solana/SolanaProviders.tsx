@@ -15,10 +15,8 @@ import {
   createDefaultAuthorizationResultCache,
   createDefaultWalletNotFoundHandler,
 } from '@solana-mobile/wallet-adapter-mobile';
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-} from '@solana/wallet-adapter-wallets';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
+import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 
 // Default styles for WalletMultiButton modal
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -32,7 +30,10 @@ export default function SolanaProviders({ children }: { children: React.ReactNod
       new SolanaMobileWalletAdapter({
         addressSelector: createDefaultAddressSelector(),
         authorizationResultCache: createDefaultAuthorizationResultCache(),
-        onWalletNotFound: createDefaultWalletNotFoundHandler(),
+        // MWA requires a secure origin and a chain.
+        chain: 'solana:devnet',
+        onWalletNotFound: async (mobileWalletAdapter) =>
+          createDefaultWalletNotFoundHandler()(mobileWalletAdapter as any),
         appIdentity: {
           name: 'Vault Game',
           uri: 'https://vault-game.local',
