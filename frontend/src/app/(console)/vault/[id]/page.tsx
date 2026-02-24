@@ -1,11 +1,19 @@
-import Link from "next/link";
+'use client';
 
-export default async function VaultDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+import Link from 'next/link';
+import { useMemo } from 'react';
+import Sparkline from '@/components/console/Sparkline';
+import { useVaultTelemetry } from '@/lib/useVaultTelemetry';
+
+export default function VaultDetailPage({ params }: { params: { id: string } }) {
+  const id = params.id;
+  // Current UI uses short ids; treat as a numeric vault index when possible.
+  const vaultId = useMemo(() => {
+    const asNum = Number(id);
+    return Number.isFinite(asNum) ? asNum : 0;
+  }, [id]);
+
+  const { vault, feeHistory } = useVaultTelemetry(vaultId);
 
   return (
     <div className="space-y-3">
@@ -25,16 +33,23 @@ export default async function VaultDetailPage({
           <div className="text-xs tracking-widest text-matrix-dim">[ TELEMETRY ]</div>
           <div className="mt-2 space-y-1 text-sm">
             <div>
-              STATE: <span className="text-matrix">LIVE</span>
+              STATE: <span className="text-matrix">{vault ? (vault.status === 1 ? 'LIVE' : 'SEALED') : '—'}</span>
             </div>
             <div>
-              TYPE: <span className="text-matrix">SOL</span>
+              FEE: <span className="text-matrix">{vault ? (vault.isSolFee ? 'SOL' : 'SKR') : '—'}</span>
             </div>
             <div>
-              PRIZE: <span className="text-matrix">1.25 SOL</span>
+              ATTEMPTS: <span className="text-matrix">{vault ? Number(vault.attemptCount) : 0}</span>
             </div>
             <div>
-              COOLDOWN: <span className="text-matrix-dim">—</span>
+              NEXT COST:{' '}
+              <span className="text-matrix-hot">{vault ? Number(vault.currentFeeAmount) : 0}</span>
+            </div>
+            <div className="pt-2 text-xs text-matrix-dim">
+              FEE LADDER
+              <div className="mt-1 text-matrix">
+                <Sparkline values={feeHistory.length ? feeHistory : [0]} />
+              </div>
             </div>
           </div>
         </section>

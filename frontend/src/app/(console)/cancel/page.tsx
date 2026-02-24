@@ -5,7 +5,7 @@ export default function CancelPage() {
         MODULE: <span className="text-matrix">CANCEL</span>
       </div>
       <div className="border border-matrix-dim/30 bg-black/30 p-3 text-xs text-matrix-dim">
-        WARNING: Cancelling returns funds to authority. This is an on-chain action.
+        WARNING: Abort will return staked funds to the vault authority. This action is final once broadcast.
       </div>
       <button className="btn-bracket" type="button">
         CONFIRM CANCEL

@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { Transaction } from '@solana/web3.js';
+import { touchPlayerIx } from '@/lib/anchor';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((m) => m.WalletMultiButton),
@@ -20,14 +22,39 @@ function RuleLine({ k, v }: { k: string; v: string }) {
 }
 
 export default function LandingPage() {
-  const { connected } = useWallet();
+  const { connection } = useConnection();
+  const { connected, publicKey, sendTransaction } = useWallet();
+  const [status, setStatus] = useState<string>('');
 
-  // Wallet-gate: once connected, allow entrance to console.
+  // Wallet-gate: once connected, touch/init the on-chain player profile, then enter.
   useEffect(() => {
-    if (!connected) return;
-    // Soft redirect by link (keeps client-only wallet state stable)
-    window.location.href = '/vaults';
-  }, [connected]);
+    if (!connected || !publicKey) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setStatus('LINK ESTABLISHED — initializing identity…');
+        const ix = await touchPlayerIx(publicKey);
+        const tx = new Transaction().add(ix);
+        const sig = await sendTransaction(tx, connection);
+        await connection.confirmTransaction(sig, 'confirmed');
+        if (cancelled) return;
+        setStatus('IDENTITY SYNCED — entering console…');
+        // Soft redirect by link (keeps client-only wallet state stable)
+        window.location.href = '/vaults';
+      } catch {
+        if (cancelled) return;
+        // Soft fallback: still allow entry, but explain that identity sync didn't land on-chain yet.
+        setStatus('IDENTITY SYNC FAILED — entering console anyway (profile may be empty until first action)');
+        window.location.href = '/vaults';
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connected, publicKey, sendTransaction, connection]);
 
   const rules = useMemo(
     () => [
@@ -47,7 +74,7 @@ export default function LandingPage() {
           <div className="text-xs tracking-widest text-matrix-dim">[ SEEDVAULT ACCESS GATE ]</div>
           <h1 className="mt-3 text-3xl font-semibold text-matrix">VAULT GAME</h1>
           <p className="mt-2 text-sm text-matrix-dim/90">
-            A console-style on-chain vault cracking game. Connect a wallet to enter.
+            A console-style vault cracking game. Connect a wallet to enter.
           </p>
 
           <div className="mt-6 space-y-2">
@@ -63,14 +90,15 @@ export default function LandingPage() {
             </Link>
           </div>
 
+          {status ? (
+            <div className="mt-4 border border-matrix-dim/30 bg-black/30 px-3 py-2 text-xs text-matrix">
+              {status}
+            </div>
+          ) : null}
+
           <div className="mt-6 space-y-2 text-xs text-matrix-dim/80">
-            <div>
-              SeedVault / MWA works when opened inside Solana Mobile (Saga/Seeker) browser.
-            </div>
-            <div>
-              Important: MWA requires an <span className="text-matrix">https://</span> origin. If you open a local
-              <span className="text-matrix"> http://192.168…</span> link, wallets may show as “Install / Download”.
-            </div>
+            <div>Tip: For the smoothest wallet connection, open Vault-Game from a secure link (HTTPS).</div>
+            <div>If your wallet options look wrong, try reopening from the official link or switching browsers.</div>
           </div>
         </div>
       </div>

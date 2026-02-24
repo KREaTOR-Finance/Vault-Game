@@ -1,8 +1,9 @@
 'use client';
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import NavigatorPrompt from "@/components/console/NavigatorPrompt";
+import GlobalAttemptBanner from "@/components/console/GlobalAttemptBanner";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 function shortKey(k: string) {
@@ -10,8 +11,11 @@ function shortKey(k: string) {
 }
 
 function HudLine() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, disconnect } = useWallet();
   const [time, setTime] = useState<string>("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const tick = () => setTime(new Date().toLocaleTimeString());
@@ -20,20 +24,103 @@ function HudLine() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      const t = e.target as Node | null;
+      if (!t) return;
+
+      // Close when tapping/clicking outside the menu + its toggle button.
+      if (menuRef.current?.contains(t)) return;
+      if (menuButtonRef.current?.contains(t)) return;
+      setMenuOpen(false);
+    };
+
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => window.removeEventListener('pointerdown', onPointerDown);
+  }, [menuOpen]);
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-xs text-matrix-dim">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span>
-          WALLET:
-          <span className="text-matrix">
-            {connected && publicKey ? " " + shortKey(publicKey.toBase58()) : " DISCONNECTED"}
+        <span className="relative flex items-center gap-2">
+          <span>
+            WALLET:
+            <span className="text-matrix">
+              {connected && publicKey ? " " + shortKey(publicKey.toBase58()) : " DISCONNECTED"}
+            </span>
           </span>
+
+          {connected && publicKey ? (
+            <>
+              <button
+                ref={menuButtonRef}
+                type="button"
+                className="btn-bracket px-2 py-1 text-[10px]"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                title="Profile menu"
+              >
+                PROFILE
+              </button>
+
+              {menuOpen ? (
+                <div
+                  ref={menuRef}
+                  role="menu"
+                  className="absolute left-0 top-full z-50 mt-2 w-[260px] border border-matrix-dim/40 bg-black/90 p-2 text-xs text-matrix-dim shadow-lg"
+                >
+                  <div className="border-b border-matrix-dim/30 px-2 py-2">
+                    <div className="tracking-widest text-matrix-dim">[ IDENTITY ]</div>
+                    <div className="mt-1 font-mono text-matrix">{shortKey(publicKey.toBase58())}</div>
+                  </div>
+
+                  <div className="px-1 py-2">
+                    <button
+                      role="menuitem"
+                      type="button"
+                      className="w-full text-left px-2 py-2 hover:bg-matrix-dim/10"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(publicKey.toBase58());
+                        setMenuOpen(false);
+                      }}
+                    >
+                      COPY ADDRESS
+                    </button>
+
+                    <button
+                      role="menuitem"
+                      type="button"
+                      className="w-full text-left px-2 py-2 hover:bg-matrix-dim/10"
+                      onClick={() => {
+                        disconnect();
+                        setMenuOpen(false);
+                      }}
+                    >
+                      EXIT LINK (DISCONNECT)
+                    </button>
+                  </div>
+
+                  <div className="border-t border-matrix-dim/30 px-2 py-2 text-[10px] text-matrix-dim/70">
+                    Esc: close
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </span>
         <span>
-          CLUSTER:<span className="text-matrix"> DEVNET</span>
-        </span>
-        <span>
-          SLOT:<span className="text-matrix"> —</span>
+          NETWORK:<span className="text-matrix"> SKR GRID</span>
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -79,6 +166,9 @@ export default function ConsoleFrame({ children }: { children: ReactNode }) {
 
           <div className="border border-matrix-dim/45 bg-black/55 p-4">
             <HudLine />
+            <div className="mt-3">
+              <GlobalAttemptBanner />
+            </div>
             <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr_320px]">
               <Panel title="SYSTEM LOG">
                 <div className="space-y-2 text-xs text-matrix-dim/90">
@@ -86,10 +176,10 @@ export default function ConsoleFrame({ children }: { children: ReactNode }) {
                     <span className="text-matrix">[OK]</span> matrix-rain online
                   </div>
                   <div>
-                    <span className="text-matrix">[OK]</span> ui booted
+                    <span className="text-matrix">[OK]</span> interface initialized
                   </div>
                   <div>
-                    <span className="text-matrix">[WARN]</span> wallet not connected
+                    <span className="text-matrix">[WARN]</span> link offline (wallet not connected)
                   </div>
                 </div>
               </Panel>

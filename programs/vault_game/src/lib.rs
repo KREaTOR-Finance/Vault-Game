@@ -7,6 +7,13 @@ use anchor_spl::{
 declare_id!("B1uj973FayJZYCHVJx3td57zMMBzg4n6UENB3bS24F3t");
 
 // -----------------
+// Scoring (tier-only rank is derived client-side)
+// -----------------
+const SCORE_PER_ATTEMPT: u64 = 1;
+const SCORE_PER_VAULT_CREATED: u64 = 50;
+const SCORE_PER_WIN: u64 = 250;
+
+// -----------------
 // Program
 // -----------------
 #[program]
@@ -25,6 +32,18 @@ pub mod vault_game {
         Ok(())
     }
 
+    /// Touch (initialize) a player profile.
+    ///
+    /// Customary for mobile-first Seeker/Saga-style apps: this ensures the PlayerProfile PDA
+    /// exists immediately after connect, even before any gameplay actions.
+    pub fn touch_player(ctx: Context<TouchPlayer>) -> Result<()> {
+        let pp = &mut ctx.accounts.player_profile;
+        pp.authority = ctx.accounts.player.key();
+        pp.last_seen_ts = Clock::get()?.unix_timestamp;
+        pp.bump = ctx.bumps.player_profile;
+        Ok(())
+    }
+
     /// Create a new vault.
     ///
     /// Fees are SKR by default; SOL is allowed as fallback.
@@ -37,6 +56,14 @@ pub mod vault_game {
 
         let gs = &mut ctx.accounts.global_state;
         let vault = &mut ctx.accounts.vault;
+
+        // Touch player profile (init if needed) + record creation.
+        let pp = &mut ctx.accounts.player_profile;
+        pp.authority = ctx.accounts.creator.key();
+        pp.vaults_created = pp.vaults_created.checked_add(1).ok_or(VaultError::MathOverflow)?;
+        pp.score = pp.score.checked_add(SCORE_PER_VAULT_CREATED).ok_or(VaultError::MathOverflow)?;
+        pp.last_seen_ts = Clock::get()?.unix_timestamp;
+        pp.bump = ctx.bumps.player_profile;
 
         if let Some(mint) = args.fee_mint {
             require_keys_eq!(mint, gs.skr_mint, VaultError::UnsupportedFeeMint);
@@ -84,6 +111,14 @@ pub mod vault_game {
         require!(vault.status == VaultStatus::Active as u8, VaultError::VaultNotActive);
         require!(Clock::get()?.unix_timestamp <= vault.end_ts, VaultError::VaultExpired);
         require!(vault.is_sol_fee, VaultError::WrongFeeCurrency);
+
+        // Touch player profile (init if needed) + record attempt.
+        let pp = &mut ctx.accounts.player_profile;
+        pp.authority = ctx.accounts.player.key();
+        pp.attempts = pp.attempts.checked_add(1).ok_or(VaultError::MathOverflow)?;
+        pp.score = pp.score.checked_add(SCORE_PER_ATTEMPT).ok_or(VaultError::MathOverflow)?;
+        pp.last_seen_ts = Clock::get()?.unix_timestamp;
+        pp.bump = ctx.bumps.player_profile;
 
         let fee = vault.current_fee_amount;
         if fee == 0 {
@@ -162,6 +197,14 @@ pub mod vault_game {
         require!(!vault.is_sol_fee, VaultError::WrongFeeCurrency);
         require_keys_eq!(ctx.accounts.fee_mint.key(), vault.fee_mint, VaultError::WrongFeeMint);
 
+        // Touch player profile (init if needed) + record attempt.
+        let pp = &mut ctx.accounts.player_profile;
+        pp.authority = ctx.accounts.player.key();
+        pp.attempts = pp.attempts.checked_add(1).ok_or(VaultError::MathOverflow)?;
+        pp.score = pp.score.checked_add(SCORE_PER_ATTEMPT).ok_or(VaultError::MathOverflow)?;
+        pp.last_seen_ts = Clock::get()?.unix_timestamp;
+        pp.bump = ctx.bumps.player_profile;
+
         let fee = vault.current_fee_amount;
         if fee == 0 {
             vault.attempt_count = vault.attempt_count.checked_add(1).ok_or(VaultError::MathOverflow)?;
@@ -237,6 +280,14 @@ pub mod vault_game {
         vault.status = VaultStatus::Settled as u8;
         vault.settled_at = Some(Clock::get()?.unix_timestamp);
 
+        // Touch player profile (init if needed) + record win.
+        let pp = &mut ctx.accounts.player_profile;
+        pp.authority = ctx.accounts.player.key();
+        pp.wins = pp.wins.checked_add(1).ok_or(VaultError::MathOverflow)?;
+        pp.score = pp.score.checked_add(SCORE_PER_WIN).ok_or(VaultError::MathOverflow)?;
+        pp.last_seen_ts = Clock::get()?.unix_timestamp;
+        pp.bump = ctx.bumps.player_profile;
+
         emit!(VaultWon {
             vault: vault.key(),
             winner: ctx.accounts.player.key(),
@@ -302,6 +353,23 @@ pub struct InitializeGlobal<'info> {
 }
 
 #[derive(Accounts)]
+pub struct TouchPlayer<'info> {
+    #[account(
+        init_if_needed,
+        payer = player,
+        space = 8 + PlayerProfile::LEN,
+        seeds = [b"player", player.key().as_ref()],
+        bump
+    )]
+    pub player_profile: Account<'info, PlayerProfile>,
+
+    #[account(mut)]
+    pub player: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 #[instruction(args: CreateVaultArgs)]
 pub struct CreateVault<'info> {
     #[account(mut, seeds=[b"global"], bump = global_state.bump)]
@@ -315,6 +383,15 @@ pub struct CreateVault<'info> {
         bump
     )]
     pub vault: Account<'info, Vault>,
+
+    #[account(
+        init_if_needed,
+        payer = creator,
+        space = 8 + PlayerProfile::LEN,
+        seeds = [b"player", creator.key().as_ref()],
+        bump
+    )]
+    pub player_profile: Account<'info, PlayerProfile>,
 
     #[account(mut)]
     pub creator: Signer<'info>,
@@ -330,6 +407,15 @@ pub struct MakeGuessSol<'info> {
     #[account(mut, seeds=[b"mega_vault"], bump = mega_vault.bump)]
     pub mega_vault: Account<'info, MegaVault>,
 
+    #[account(
+        init_if_needed,
+        payer = player,
+        space = 8 + PlayerProfile::LEN,
+        seeds = [b"player", player.key().as_ref()],
+        bump
+    )]
+    pub player_profile: Account<'info, PlayerProfile>,
+
     #[account(mut)]
     pub player: Signer<'info>,
 
@@ -343,6 +429,15 @@ pub struct MakeGuessSpl<'info> {
 
     #[account(mut, seeds=[b"mega_vault"], bump = mega_vault.bump)]
     pub mega_vault: Account<'info, MegaVault>,
+
+    #[account(
+        init_if_needed,
+        payer = player,
+        space = 8 + PlayerProfile::LEN,
+        seeds = [b"player", player.key().as_ref()],
+        bump
+    )]
+    pub player_profile: Account<'info, PlayerProfile>,
 
     #[account(mut)]
     pub player: Signer<'info>,
@@ -380,8 +475,19 @@ pub struct ClaimWin<'info> {
     #[account(mut)]
     pub vault: Account<'info, Vault>,
 
+    #[account(
+        init_if_needed,
+        payer = player,
+        space = 8 + PlayerProfile::LEN,
+        seeds = [b"player", player.key().as_ref()],
+        bump
+    )]
+    pub player_profile: Account<'info, PlayerProfile>,
+
     #[account(mut)]
     pub player: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
 }
 
 // -----------------
@@ -404,6 +510,20 @@ pub struct MegaVault {
 }
 impl MegaVault {
     pub const LEN: usize = 1;
+}
+
+#[account]
+pub struct PlayerProfile {
+    pub authority: Pubkey,
+    pub attempts: u64,
+    pub wins: u64,
+    pub vaults_created: u64,
+    pub score: u64,
+    pub last_seen_ts: i64,
+    pub bump: u8,
+}
+impl PlayerProfile {
+    pub const LEN: usize = 32 + 8 + 8 + 8 + 8 + 8 + 1;
 }
 
 #[account]

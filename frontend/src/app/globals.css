@@ -104,3 +104,16 @@ body {
 .text-matrix-hot {
   color: var(--matrix-hot);
 }
+
+/* marquee (global attempt banner) */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee 18s linear infinite;
+}

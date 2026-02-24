@@ -18,7 +18,7 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 default = []
 
 [dependencies]
-anchor-lang = "0.32.1"
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 anchor-spl = "0.32.1"
 # Needed for hashing secrets under solana-program v2.x
 solana-hash = "2.3.0"

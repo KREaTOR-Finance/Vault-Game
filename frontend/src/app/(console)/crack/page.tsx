@@ -27,10 +27,25 @@ export default function CrackPage() {
     setPin('');
   }
 
+  const [status, setStatus] = useState<string>('');
+
   function submit() {
-    // Wire to on-chain attempt next. For now, just a local demo interaction.
-    // eslint-disable-next-line no-alert
-    alert(`Attempt submitted: ${pin || '(empty)'}`);
+    if (!pin.length) {
+      setStatus('NO INPUT — enter a 6‑digit PIN');
+      return;
+    }
+
+    if (pin.length < maxLen) {
+      setStatus(`INCOMPLETE — ${pin.length}/${maxLen} digits`);
+      return;
+    }
+
+    // Gameplay: this is a local simulation in the free vault.
+    // When the wallet + on-chain instruction is wired, this should:
+    // 1) show an "attempt pending" state
+    // 2) submit the transaction
+    // 3) resolve with success/fail + receipt
+    setStatus('ATTEMPT QUEUED — simulation mode · Cost: 1 SKR');
   }
 
   return (
@@ -89,8 +104,14 @@ export default function CrackPage() {
         </button>
       </div>
 
+      {status ? (
+        <div className="border border-matrix-dim/30 bg-black/30 px-3 py-2 text-xs text-matrix">
+          {status}
+        </div>
+      ) : null}
+
       <div className="text-xs text-matrix-dim/80">
-        NOTE: This will be wired to the on-chain attempt instruction next.
+        Each attempt costs <span className="text-matrix">1 SKR</span>. Connect a wallet to perform real attempts.
       </div>
     </div>
   );
