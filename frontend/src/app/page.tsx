@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { Transaction } from '@solana/web3.js';
 import { touchPlayerIx } from '@/lib/anchor';
@@ -25,15 +25,26 @@ export default function LandingPage() {
   const { connection } = useConnection();
   const { connected, publicKey, sendTransaction } = useWallet();
   const [status, setStatus] = useState<string>('');
+  const [showEnterAnyway, setShowEnterAnyway] = useState(false);
+  const touchRan = useRef(false);
 
   // Wallet-gate: once connected, touch/init the on-chain player profile, then enter.
   useEffect(() => {
-    if (!connected || !publicKey) return;
+    if (!connected || !publicKey) {
+      touchRan.current = false;
+      setShowEnterAnyway(false);
+      return;
+    }
+
+    // Prevent repeated touch attempts that can cause flicker on some mobile wallets.
+    if (touchRan.current) return;
+    touchRan.current = true;
 
     let cancelled = false;
 
     (async () => {
       try {
+        setShowEnterAnyway(false);
         setStatus('LINK ESTABLISHED — initializing identity…');
         const ix = await touchPlayerIx(publicKey);
         const tx = new Transaction().add(ix);
@@ -41,13 +52,13 @@ export default function LandingPage() {
         await connection.confirmTransaction(sig, 'confirmed');
         if (cancelled) return;
         setStatus('IDENTITY SYNCED — entering console…');
-        // Soft redirect by link (keeps client-only wallet state stable)
         window.location.href = '/vaults';
       } catch {
         if (cancelled) return;
-        // Soft fallback: still allow entry, but explain that identity sync didn't land on-chain yet.
-        setStatus('IDENTITY SYNC FAILED — entering console anyway (profile may be empty until first action)');
-        window.location.href = '/vaults';
+        // Soft fallback: stay on the gate and let the player enter manually.
+        // This avoids redirect loops if the wallet briefly drops connection during signing.
+        setStatus('IDENTITY SYNC FAILED — you can still enter (profile may be empty until first action)');
+        setShowEnterAnyway(true);
       }
     })();
 
@@ -93,6 +104,14 @@ export default function LandingPage() {
           {status ? (
             <div className="mt-4 border border-matrix-dim/30 bg-black/30 px-3 py-2 text-xs text-matrix">
               {status}
+            </div>
+          ) : null}
+
+          {showEnterAnyway ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link className="btn-bracket" href="/vaults">
+                ENTER CONSOLE
+              </Link>
             </div>
           ) : null}
 
