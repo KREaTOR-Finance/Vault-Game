@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import NavigatorPrompt from "@/components/console/NavigatorPrompt";
 import GlobalAttemptBanner from "@/components/console/GlobalAttemptBanner";
+import TutorialOverlay from "@/components/console/TutorialOverlay";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 function shortKey(k: string) {
@@ -198,6 +199,8 @@ export default function ConsoleFrame({ children }: { children: ReactNode }) {
               :: VAULT INTERFACE v0.1 ::
             </div>
           </div>
+
+          <TutorialOverlay />
         </div>
       </div>
     </div>

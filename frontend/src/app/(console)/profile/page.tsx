@@ -7,7 +7,7 @@ import { usePlayerProfile } from '@/lib/usePlayerProfile';
 
 export default function ProfilePage() {
   const { publicKey } = useWallet();
-  const { profile, loading } = usePlayerProfile();
+  const { profile } = usePlayerProfile();
 
   // Placeholder until the PDA exists for this wallet.
   const stats = useMemo(() => {

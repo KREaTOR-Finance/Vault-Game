@@ -8,10 +8,10 @@ export default function HintsPage() {
         [INTEL FEED]
         <div className="mt-2 space-y-1">
           <div>
-            <span className="text-matrix">HINT#01</span> → "first two digits repeat"
+            <span className="text-matrix">HINT#01</span> → &quot;first two digits repeat&quot;
           </div>
           <div>
-            <span className="text-matrix">HINT#02</span> → "sum of digits = 14"
+            <span className="text-matrix">HINT#02</span> → &quot;sum of digits = 14&quot;
           </div>
         </div>
       </div>

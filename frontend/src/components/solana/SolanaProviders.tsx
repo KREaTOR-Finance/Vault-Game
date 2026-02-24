@@ -24,8 +24,9 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 export default function SolanaProviders({ children }: { children: React.ReactNode }) {
   const endpoint = useMemo(() => clusterApiUrl('devnet'), []);
 
-  const wallets = useMemo(
-    () => [
+  const wallets = useMemo(() => {
+    const handleNotFound = createDefaultWalletNotFoundHandler();
+    return [
       // Solana Mobile (SeedVault) / MWA
       new SolanaMobileWalletAdapter({
         addressSelector: createDefaultAddressSelector(),
@@ -33,7 +34,9 @@ export default function SolanaProviders({ children }: { children: React.ReactNod
         // MWA requires a secure origin and a chain.
         chain: 'solana:devnet',
         onWalletNotFound: async (mobileWalletAdapter) =>
-          createDefaultWalletNotFoundHandler()(mobileWalletAdapter as any),
+          handleNotFound(
+            mobileWalletAdapter as unknown as Parameters<typeof handleNotFound>[0]
+          ),
         appIdentity: {
           name: 'Vault Game',
           uri: 'https://vault-game.local',
@@ -42,9 +45,8 @@ export default function SolanaProviders({ children }: { children: React.ReactNod
       // Desktop defaults
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
-    ],
-    []
-  );
+    ];
+  }, []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

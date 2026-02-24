@@ -46,10 +46,16 @@ export default function GlobalAttemptBanner() {
         });
         if (!tx) return;
 
-        const msg: any = tx.transaction.message as any;
+        type MsgLike = {
+          getAccountKeys?: () => { staticAccountKeys: PublicKey[] };
+          accountKeys?: PublicKey[];
+          instructions?: Array<{ programIdIndex: number; accounts?: number[] }>;
+        };
+
+        const msg = tx.transaction.message as unknown as MsgLike;
         // Legacy + v0 message support (best-effort typing)
         const accountKeys: PublicKey[] = msg?.getAccountKeys?.().staticAccountKeys ?? msg?.accountKeys ?? [];
-        const instructions: any[] = msg?.instructions ?? [];
+        const instructions = msg?.instructions ?? [];
 
         for (const ix of instructions) {
           const programId = accountKeys[ix.programIdIndex];

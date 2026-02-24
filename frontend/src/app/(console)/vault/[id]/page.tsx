@@ -2,18 +2,31 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { PublicKey } from '@solana/web3.js';
 import Sparkline from '@/components/console/Sparkline';
 import { useVaultTelemetry } from '@/lib/useVaultTelemetry';
 
+function isProbablyPubkey(s: string) {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+}
+
 export default function VaultDetailPage({ params }: { params: { id: string } }) {
   const id = params.id;
-  // Current UI uses short ids; treat as a numeric vault index when possible.
-  const vaultId = useMemo(() => {
-    const asNum = Number(id);
-    return Number.isFinite(asNum) ? asNum : 0;
+
+  const vaultPda = useMemo(() => {
+    if (isProbablyPubkey(id)) return new PublicKey(id);
+    // fallback: treat as numeric vault index for legacy routes
+    const n = Number(id);
+    if (Number.isFinite(n)) {
+      const buf = Buffer.alloc(8);
+      // eslint-disable-next-line no-undef
+      buf.writeBigUInt64LE(BigInt(n));
+      return PublicKey.findProgramAddressSync([Buffer.from('vault'), buf], new PublicKey('B1uj973FayJZYCHVJx3td57zMMBzg4n6UENB3bS24F3t'))[0];
+    }
+    return new PublicKey('11111111111111111111111111111111');
   }, [id]);
 
-  const { vault, feeHistory } = useVaultTelemetry(vaultId);
+  const { vault, feeHistory } = useVaultTelemetry(vaultPda);
 
   return (
     <div className="space-y-3">
@@ -21,7 +34,7 @@ export default function VaultDetailPage({ params }: { params: { id: string } }) 
         <div className="text-sm text-matrix-dim">
           MODULE: <span className="text-matrix">VAULT</span>
           <span className="text-matrix-dim"> / </span>
-          <span className="text-matrix-hot">{id.toUpperCase()}</span>
+          <span className="text-matrix-hot">{id}</span>
         </div>
         <Link href="/vaults" className="btn-bracket">
           BACK

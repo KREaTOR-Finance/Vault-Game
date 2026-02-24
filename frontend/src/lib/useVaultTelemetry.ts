@@ -2,15 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConnection } from '@solana/wallet-adapter-react';
-import { decodeVault, vaultPdaFromId, type VaultState } from '@/lib/vault';
+import { PublicKey } from '@solana/web3.js';
+import { decodeVault, type VaultState } from '@/lib/vault';
 
-export function useVaultTelemetry(vaultId: number) {
+export function useVaultTelemetry(vaultKey: PublicKey) {
   const { connection } = useConnection();
   const [vault, setVault] = useState<VaultState | null>(null);
   const [loading, setLoading] = useState(false);
   const feeHistory = useRef<number[]>([]);
 
-  const vaultPda = useMemo(() => vaultPdaFromId(vaultId), [vaultId]);
+  const vaultPda = useMemo(() => vaultKey, [vaultKey]);
 
   useEffect(() => {
     let cancelled = false;
