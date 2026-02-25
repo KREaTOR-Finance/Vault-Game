@@ -91,13 +91,15 @@ pub mod vault_game {
 
         // Guess fee ladder (attempts-only): fee increases 1.2x each attempt.
         // Starting fee is derived from creator base fee and PIN length.
-        require!((3..=6).contains(&args.pin_len), VaultError::BadPinLen);
+        // v1: standard vaults are 3–6 digits. Mega vault uses 8 digits.
+        require!((3..=6).contains(&args.pin_len) || args.pin_len == 8, VaultError::BadPinLen);
 
         let mult: u64 = match args.pin_len {
             3 => 100,
             4 => 25,
             5 => 10,
             6 => 10,
+            8 => 1,
             _ => 10,
         };
 

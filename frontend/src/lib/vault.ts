@@ -14,6 +14,8 @@ export type VaultState = {
   status: number;
   createdAt: bigint;
   endTs: bigint;
+  vaultId: bigint;
+  prizeAmount: bigint;
   startingFeeAmount: bigint;
   currentFeeAmount: bigint;
   attemptCount: bigint;
@@ -21,6 +23,7 @@ export type VaultState = {
   feeMint: PublicKey;
   totalFeesCollected: bigint;
   winnerFeePool: bigint;
+  paidOut: boolean;
   bump: number;
 };
 
@@ -47,6 +50,13 @@ export function decodeVault(data: Buffer): VaultState {
   o += 8;
   // secret_hash [32]
   o += 32;
+
+  const vaultId = readU64LE(data, o);
+  o += 8;
+
+  const prizeAmount = readU64LE(data, o);
+  o += 8;
+
   const startingFeeAmount = readU64LE(data, o);
   o += 8;
   const currentFeeAmount = readU64LE(data, o);
@@ -65,6 +75,10 @@ export function decodeVault(data: Buffer): VaultState {
   o += 33;
   // settled_at: Option<i64> (1 + 8)
   o += 9;
+
+  const paidOut = data.readUInt8(o) === 1;
+  o += 1;
+
   const bump = data.readUInt8(o);
 
   return {
@@ -72,6 +86,8 @@ export function decodeVault(data: Buffer): VaultState {
     status,
     createdAt,
     endTs,
+    vaultId,
+    prizeAmount,
     startingFeeAmount,
     currentFeeAmount,
     attemptCount,
@@ -79,6 +95,7 @@ export function decodeVault(data: Buffer): VaultState {
     feeMint,
     totalFeesCollected,
     winnerFeePool,
+    paidOut,
     bump,
   };
 }

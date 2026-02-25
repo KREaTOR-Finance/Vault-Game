@@ -3,16 +3,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
-type Stage = 'create' | 'crack' | 'done';
+type Stage = 'crack' | 'create' | 'done';
 
 const LS_KEY = 'vault_game:tutorial_stage:v1';
 
 function loadStage(): Stage {
   try {
     const v = localStorage.getItem(LS_KEY) as Stage | null;
-    return v === 'create' || v === 'crack' || v === 'done' ? v : 'create';
+    return v === 'create' || v === 'crack' || v === 'done' ? v : 'crack';
   } catch {
-    return 'create';
+    return 'crack';
   }
 }
 
@@ -35,7 +35,7 @@ export function advanceTutorial(next: Stage) {
 }
 
 export default function TutorialOverlay() {
-  const [stage, setStage] = useState<Stage>('create');
+  const [stage, setStage] = useState<Stage>('crack');
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -56,12 +56,12 @@ export default function TutorialOverlay() {
     return () => window.removeEventListener('vault_game:tutorial_stage', listener);
   }, []);
 
-  // Auto-advance: if a vault was created, move to crack stage.
+  // Auto-advance: after the user attempts a crack once, move to create stage.
   useEffect(() => {
-    if (stage !== 'create') return;
-    const id = localStorage.getItem('vault_game:last_created_vault');
-    if (id) {
-      const next: Stage = 'crack';
+    if (stage !== 'crack') return;
+    const did = localStorage.getItem('vault_game:did_attempt');
+    if (did === '1') {
+      const next: Stage = 'create';
       saveStage(next);
       setStage(next);
       setOpen(true);
@@ -69,19 +69,24 @@ export default function TutorialOverlay() {
   }, [stage]);
 
   const body = useMemo(() => {
-    if (stage === 'create') {
+    if (stage === 'crack') {
       return {
         title: '[ OPERATOR TRAINING // STAGE 1 ]',
         lines: [
-          'Create a tiny vault first. Keep it simple.',
-          'Defaults: 24h · SKR · Base 1 · PIN 6 digits.',
-          'Free vaults are allowed (Base 0).',
-          'After creation you’ll get a share link to send to others.',
+          'You are a NEO. Your fortune lies in the vaults ahead.',
+          'Start with the Mega Vault: 8 digits. Brutal odds.',
+          'Each attempt costs VC and escalates (1.2× ladder).',
         ],
         actions: (
           <div className="flex flex-wrap gap-2">
-            <Link className="btn-bracket" href="/create" onClick={() => setOpen(false)}>
-              GO TO CREATE
+            <Link className="btn-bracket" href="/vaults" onClick={() => setOpen(false)}>
+              GO TO VAULTS
+            </Link>
+            <Link className="btn-bracket" href="/crack" onClick={() => setOpen(false)}>
+              GO TO CRACK
+            </Link>
+            <Link className="btn-bracket" href="/lore" onClick={() => setOpen(false)}>
+              READ LORE
             </Link>
             <button className="btn-bracket" type="button" onClick={() => setOpen(false)}>
               LATER
@@ -91,21 +96,18 @@ export default function TutorialOverlay() {
       };
     }
 
-    if (stage === 'crack') {
+    if (stage === 'create') {
       return {
         title: '[ OPERATOR TRAINING // STAGE 2 ]',
         lines: [
-          'Now try cracking a vault.',
-          'Attempts cost SKR and escalate (1.2× ladder).',
-          'Your attempts appear in the global activity banner.',
+          'Now create a vault and set the bait.',
+          'Creators deposit the prize. Crackers contribute via attempt fees.',
+          'Share the link. Watch the guesses climb.',
         ],
         actions: (
           <div className="flex flex-wrap gap-2">
-            <Link className="btn-bracket" href="/vaults" onClick={() => setOpen(false)}>
-              GO TO VAULTS
-            </Link>
-            <Link className="btn-bracket" href="/crack" onClick={() => setOpen(false)}>
-              GO TO CRACK
+            <Link className="btn-bracket" href="/create" onClick={() => setOpen(false)}>
+              GO TO CREATE
             </Link>
             <button
               className="btn-bracket"

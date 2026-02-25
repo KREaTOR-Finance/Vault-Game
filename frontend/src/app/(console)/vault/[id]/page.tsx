@@ -49,7 +49,7 @@ export default function VaultDetailPage({ params }: { params: { id: string } }) 
               STATE: <span className="text-matrix">{vault ? (vault.status === 1 ? 'LIVE' : 'SEALED') : '—'}</span>
             </div>
             <div>
-              FEE: <span className="text-matrix">{vault ? (vault.isSolFee ? 'SOL' : 'SKR') : '—'}</span>
+              FEE: <span className="text-matrix">{vault ? (vault.isSolFee ? 'SOL' : 'VC') : '—'}</span>
             </div>
             <div>
               ATTEMPTS: <span className="text-matrix">{vault ? Number(vault.attemptCount) : 0}</span>

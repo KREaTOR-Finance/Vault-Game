@@ -8,7 +8,7 @@ function maskPin(pin: string) {
 
 export default function CrackPage() {
   const [pin, setPin] = useState('');
-  const maxLen = 6;
+  const maxLen = 8;
 
   const hint = useMemo(() => {
     if (!pin.length) return 'ENTER PIN';
@@ -31,7 +31,7 @@ export default function CrackPage() {
 
   function submit() {
     if (!pin.length) {
-      setStatus('NO INPUT — enter a 6‑digit PIN');
+      setStatus('NO INPUT — enter an 8‑digit PIN');
       return;
     }
 
@@ -45,7 +45,12 @@ export default function CrackPage() {
     // 1) show an "attempt pending" state
     // 2) submit the transaction
     // 3) resolve with success/fail + receipt
-    setStatus('ATTEMPT QUEUED — simulation mode · Cost: 1 SKR');
+    setStatus('ATTEMPT QUEUED — simulation mode · Cost: 1 VC');
+    try {
+      localStorage.setItem('vault_game:did_attempt', '1');
+    } catch {
+      // ignore
+    }
   }
 
   return (
@@ -111,7 +116,7 @@ export default function CrackPage() {
       ) : null}
 
       <div className="text-xs text-matrix-dim/80">
-        Each attempt costs <span className="text-matrix">1 SKR</span>. Connect a wallet to perform real attempts.
+        Each attempt costs <span className="text-matrix">VC</span>. Connect a wallet to perform real attempts.
       </div>
     </div>
   );

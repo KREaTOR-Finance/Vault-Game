@@ -5,13 +5,13 @@ import { useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { decodeVault, type VaultState } from '@/lib/vault';
 
-export function useVaultTelemetry(vaultKey: PublicKey) {
+export function useVaultTelemetry(vaultKey?: PublicKey) {
   const { connection } = useConnection();
   const [vault, setVault] = useState<VaultState | null>(null);
   const [loading, setLoading] = useState(false);
   const feeHistory = useRef<number[]>([]);
 
-  const vaultPda = useMemo(() => vaultKey, [vaultKey]);
+  const vaultPda = useMemo(() => vaultKey ?? null, [vaultKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -20,6 +20,10 @@ export function useVaultTelemetry(vaultKey: PublicKey) {
     async function fetchOnce() {
       setLoading(true);
       try {
+        if (!vaultPda) {
+          setVault(null);
+          return;
+        }
         const info = await connection.getAccountInfo(vaultPda, 'confirmed');
         if (cancelled) return;
         if (!info?.data) {
@@ -43,21 +47,23 @@ export function useVaultTelemetry(vaultKey: PublicKey) {
     fetchOnce();
 
     // Near-realtime: subscribe to account changes.
-    subId = connection.onAccountChange(
-      vaultPda,
-      (acc) => {
-        if (cancelled) return;
-        const v = decodeVault(Buffer.from(acc.data));
-        setVault(v);
-        const fee = Number(v.currentFeeAmount);
-        if (Number.isFinite(fee)) {
-          const h = feeHistory.current;
-          h.push(fee);
-          if (h.length > 30) h.splice(0, h.length - 30);
-        }
-      },
-      'confirmed'
-    );
+    if (vaultPda) {
+      subId = connection.onAccountChange(
+        vaultPda,
+        (acc) => {
+          if (cancelled) return;
+          const v = decodeVault(Buffer.from(acc.data));
+          setVault(v);
+          const fee = Number(v.currentFeeAmount);
+          if (Number.isFinite(fee)) {
+            const h = feeHistory.current;
+            h.push(fee);
+            if (h.length > 30) h.splice(0, h.length - 30);
+          }
+        },
+        'confirmed'
+      );
+    }
 
     return () => {
       cancelled = true;

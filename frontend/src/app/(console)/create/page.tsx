@@ -8,6 +8,8 @@ import { createVaultIx, globalStatePda, vaultPdaFromCount } from '@/lib/anchor';
 import { decodeGlobalState } from '@/lib/globalState';
 
 function clampPinLen(n: number) {
+  // v1: 3-6 for standard vaults. Mega vault uses 8.
+  if (n === 8) return 8;
   return Math.max(3, Math.min(6, n));
 }
 
@@ -26,36 +28,36 @@ export default function CreatePage() {
     const b = Math.max(0, Math.floor(baseFee));
     if (b === 0) return 0;
     const len = clampPinLen(pinLen);
-    const mult = len === 3 ? 100 : len === 4 ? 25 : len === 5 ? 10 : 10;
+    const mult = len === 3 ? 100 : len === 4 ? 25 : len === 5 ? 10 : len === 8 ? 1 : 10;
     return b * mult;
   }, [baseFee, pinLen]);
 
   async function broadcast() {
     const len = clampPinLen(pinLen);
     if (deposit < 1000) {
-      setStatus('DEPOSIT TOO SMALL — minimum is 1000 SKR');
+      setStatus('DEPOSIT TOO SMALL - minimum is 1000 SKR');
       return;
     }
     if (pin.length !== len) {
-      setStatus(`PIN LENGTH MISMATCH — expected ${len} digits`);
+      setStatus(`PIN LENGTH MISMATCH - expected ${len} digits`);
       return;
     }
     if (!publicKey) {
-      setStatus('NO WALLET — connect at the gate');
+      setStatus('NO WALLET - connect at the gate');
       return;
     }
 
     try {
-      setStatus('CALIBRATING — reading global state…');
+      setStatus('CALIBRATING - reading global state…');
       const gsInfo = await connection.getAccountInfo(globalStatePda(), 'confirmed');
       if (!gsInfo?.data) {
-        setStatus('GLOBAL STATE MISSING — program not initialized');
+        setStatus('GLOBAL STATE MISSING - program not initialized');
         return;
       }
       const gs = decodeGlobalState(Buffer.from(gsInfo.data));
 
       // secret_hash = sha256(pinBytes)
-      setStatus('SEALING SECRET — hashing PIN…');
+      setStatus('SEALING SECRET - hashing PIN…');
       const preimage = new TextEncoder().encode(pin);
       const hash = await crypto.subtle.digest('SHA-256', preimage);
       const secretHash = Buffer.from(hash);
@@ -63,7 +65,7 @@ export default function CreatePage() {
       // Derive the vault PDA from the current vault_count BEFORE create.
       const vaultPda = vaultPdaFromCount(gs.vaultCount);
 
-      setStatus('BROADCASTING VAULT — sign + send…');
+      setStatus('BROADCASTING VAULT - sign + send…');
       const ix = await createVaultIx({
         creator: publicKey,
         skrMint: gs.skrMint,
@@ -82,15 +84,18 @@ export default function CreatePage() {
       const url = `${window.location.origin}/vault/${vaultPda.toBase58()}`;
       try {
         await navigator.clipboard.writeText(url);
-        setStatus(`VAULT CREATED — LINK COPIED: ${url}`);
+        setStatus(`VAULT CREATED - LINK COPIED: ${url}`);
       } catch {
-        setStatus(`VAULT CREATED — SHARE LINK: ${url}`);
+        setStatus(`VAULT CREATED - SHARE LINK: ${url}`);
       }
 
       localStorage.setItem('vault_game:last_created_vault', vaultPda.toBase58());
-      advanceTutorial('crack');
+      if (len === 8) {
+        localStorage.setItem('vault_game:mega_vault', vaultPda.toBase58());
+      }
+      advanceTutorial('done');
     } catch {
-      setStatus('BROADCAST FAILED — try again');
+      setStatus('BROADCAST FAILED - try again');
     }
   }
 
@@ -135,7 +140,7 @@ export default function CreatePage() {
           </label>
 
           <label className="space-y-1">
-            <div className="text-xs text-matrix-dim">PIN LENGTH (3–6)</div>
+            <div className="text-xs text-matrix-dim">PIN LENGTH (3-6, mega = 8)</div>
             <input
               className="w-full border border-matrix-dim/30 bg-black/40 px-3 py-2 font-mono text-matrix outline-none"
               inputMode="numeric"
