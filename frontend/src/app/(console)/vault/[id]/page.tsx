@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import Sparkline from '@/components/console/Sparkline';
 import { useVaultTelemetry } from '@/lib/useVaultTelemetry';
+import { formatDurationSeconds } from '@/lib/time';
 
 function isProbablyPubkey(s: string) {
   return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
@@ -27,6 +28,20 @@ export default function VaultDetailPage({ params }: { params: { id: string } }) 
   }, [id]);
 
   const { vault, feeHistory } = useVaultTelemetry(vaultPda);
+  const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNowSec(Math.floor(Date.now() / 1000)), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const sealedFor = useMemo(() => {
+    if (!vault) return '—';
+    const createdAt = Number(vault.createdAt);
+    if (!Number.isFinite(createdAt) || createdAt <= 0) return '—';
+    const delta = Math.max(0, nowSec - createdAt);
+    return formatDurationSeconds(delta);
+  }, [vault, nowSec]);
 
   return (
     <div className="space-y-3">
@@ -53,6 +68,8 @@ export default function VaultDetailPage({ params }: { params: { id: string } }) 
             </div>
             <div>
               ATTEMPTS: <span className="text-matrix">{vault ? Number(vault.attemptCount) : 0}</span>
+              <span className="text-matrix-dim"> · </span>
+              SEALED FOR: <span className="text-matrix">{sealedFor}</span>
             </div>
             <div>
               NEXT COST:{' '}

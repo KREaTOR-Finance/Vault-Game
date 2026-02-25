@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { PublicKey } from '@solana/web3.js';
 import { useVaultTelemetry } from '@/lib/useVaultTelemetry';
+import { useMegaChallenge } from '@/lib/useMegaChallenge';
+import { formatDurationSeconds } from '@/lib/time';
 
 const MOCK = [
   { id: 'A7K9', type: 'SOL', prize: '1.25 SOL', state: 'LIVE', timer: '—' },
@@ -16,32 +17,38 @@ function shortKey(k: string) {
 }
 
 export default function VaultsPage() {
-  const [mega, setMega] = useState<string | null>(null);
+  const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+
+  const { state: megaChallenge } = useMegaChallenge();
 
   useEffect(() => {
-    try {
-      setMega(localStorage.getItem('vault_game:mega_vault'));
-    } catch {
-      setMega(null);
-    }
+    const id = window.setInterval(() => setNowSec(Math.floor(Date.now() / 1000)), 1000);
+    return () => window.clearInterval(id);
   }, []);
 
   const megaPda = useMemo(() => {
-    if (!mega) return null;
-    try {
-      return new PublicKey(mega);
-    } catch {
-      return null;
-    }
-  }, [mega]);
+    const pk = megaChallenge?.vault;
+    if (!pk) return null;
+    const s = pk.toBase58();
+    if (s === '11111111111111111111111111111111') return null;
+    return pk;
+  }, [megaChallenge]);
 
   const { vault: megaVault } = useVaultTelemetry(megaPda ?? undefined);
 
   const totalValue = useMemo(() => {
     if (!megaVault) return 0;
-    // v1: show SKR/VC locked prize + fee pool as a single "value" number.
+    // v1: show locked prize + fee pool as a single "value" number.
     return Number(megaVault.prizeAmount) + Number(megaVault.winnerFeePool);
   }, [megaVault]);
+
+  const sealedFor = useMemo(() => {
+    if (!megaVault) return '—';
+    const createdAt = Number(megaVault.createdAt);
+    if (!Number.isFinite(createdAt) || createdAt <= 0) return '—';
+    const delta = Math.max(0, nowSec - createdAt);
+    return formatDurationSeconds(delta);
+  }, [megaVault, nowSec]);
 
   return (
     <div className="space-y-4">
@@ -71,6 +78,8 @@ export default function VaultsPage() {
                 {megaVault ? Number(megaVault.attemptCount).toLocaleString() : '…'}
               </div>
               <div className="mt-1 text-xs text-matrix-dim">
+                SEALED FOR: <span className="text-matrix">{sealedFor}</span>
+                <span className="mx-2 text-matrix-dim">·</span>
                 PIN: <span className="text-matrix">8 digits</span>
               </div>
             </div>
@@ -90,7 +99,7 @@ export default function VaultsPage() {
         </section>
       ) : (
         <section className="border border-matrix-dim/30 bg-black/30 p-3 text-xs text-matrix-dim">
-          No Mega Vault set yet. Create one with PIN length 8, then we’ll pin it here.
+          No Mega Vault set yet.
         </section>
       )}
 
@@ -138,7 +147,7 @@ export default function VaultsPage() {
       </div>
 
       <div className="text-xs text-matrix-dim">
-        Tip: create a Mega Vault with <span className="text-matrix">PIN length 8</span>.
+        Tip: the Mega Vault is configured by admin and is shared globally.
       </div>
     </div>
   );

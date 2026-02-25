@@ -33,6 +33,18 @@ pub mod vault_game {
         Ok(())
     }
 
+    /// Admin-only: set the globally-visible Mega Vault "challenge" vault.
+    pub fn set_mega_challenge_vault(ctx: Context<SetMegaChallengeVault>, vault: Pubkey) -> Result<()> {
+        require_keys_eq!(ctx.accounts.authority.key(), ctx.accounts.global_state.authority, VaultError::NotAuthorized);
+
+        let mc = &mut ctx.accounts.mega_challenge;
+        mc.authority = ctx.accounts.authority.key();
+        mc.vault = vault;
+        mc.bump = ctx.bumps.mega_challenge;
+
+        Ok(())
+    }
+
     /// Touch (initialize) a player profile.
     ///
     /// Customary for mobile-first Seeker/Saga-style apps: this ensures the PlayerProfile PDA
@@ -675,6 +687,26 @@ pub struct TouchPlayer<'info> {
 }
 
 #[derive(Accounts)]
+pub struct SetMegaChallengeVault<'info> {
+    #[account(mut, seeds=[b"global"], bump = global_state.bump)]
+    pub global_state: Account<'info, GlobalState>,
+
+    #[account(
+        init_if_needed,
+        payer = authority,
+        space = 8 + MegaChallenge::LEN,
+        seeds=[b"mega_challenge"],
+        bump
+    )]
+    pub mega_challenge: Account<'info, MegaChallenge>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 #[instruction(args: CreateVaultArgs)]
 pub struct CreateVault<'info> {
     #[account(mut, seeds=[b"global"], bump = global_state.bump)]
@@ -1061,6 +1093,17 @@ impl GlobalState {
     pub const LEN: usize = 32 + 32 + 8 + 1;
 }
 
+/// Separate PDA to avoid resizing `GlobalState` on devnet.
+#[account]
+pub struct MegaChallenge {
+    pub authority: Pubkey,
+    pub vault: Pubkey,
+    pub bump: u8,
+}
+impl MegaChallenge {
+    pub const LEN: usize = 32 + 32 + 1;
+}
+
 #[account]
 pub struct MegaVault {
     pub bump: u8,
@@ -1193,6 +1236,8 @@ pub enum VaultError {
     BadRewardAmount,
     #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Not authorized")]
+    NotAuthorized,
     #[msg("Vault not active")]
     VaultNotActive,
     #[msg("Vault expired")]
