@@ -136,9 +136,30 @@ class LiveVaultRepository(
         val megaVault = SolanaAddresses.megaVaultPda()
         val mint = com.solana.publickey.SolanaPublicKey.from(com.kreator.vaultgame.BuildConfig.SKR_MINT)
 
+        suspend fun ensureAtaExists(
+            payer: com.solana.publickey.SolanaPublicKey,
+            owner: com.solana.publickey.SolanaPublicKey,
+        ): com.solana.transaction.TransactionInstruction? {
+            val ata = SolanaAddresses.associatedTokenAddress(owner, mint)
+            val exists = rpc.getAccountInfoBase64(ata.base58()) != null
+            return if (exists) null else VaultGameIxs.createAta(payer = payer, owner = owner, mint = mint)
+        }
+
         return when (val txRes = walletAdapter.transact(sender) { auth ->
             val player = com.solana.publickey.SolanaPublicKey(auth.accounts.first().publicKey)
-            val ix = VaultGameIxs.attemptSpl(
+
+            // Wallets (esp. Seeker) may refuse to approve if simulation can't compute balance deltas.
+            // Ensure all required ATAs exist before attempting the program instruction.
+            val ixes = mutableListOf<com.solana.transaction.TransactionInstruction>()
+
+            // Player fee ATA (source)
+            ensureAtaExists(payer = player, owner = player)?.let { ixes += it }
+            // Vault fee ATA (destination)
+            ensureAtaExists(payer = player, owner = vault)?.let { ixes += it }
+            // Mega vault fee ATA (destination)
+            ensureAtaExists(payer = player, owner = megaVault)?.let { ixes += it }
+
+            ixes += VaultGameIxs.attemptSpl(
                 programId = programId,
                 vault = vault,
                 megaVault = megaVault,
@@ -146,10 +167,9 @@ class LiveVaultRepository(
                 player = player,
             )
 
-            val msg = com.solana.transaction.Message.Builder()
-                .addInstruction(ix)
-                .setRecentBlockhash(recent)
-                .build()
+            val mb = com.solana.transaction.Message.Builder().setRecentBlockhash(recent)
+            ixes.forEach { mb.addInstruction(it) }
+            val msg = mb.build()
 
             val tx = com.solana.transaction.Transaction(msg).serialize()
             val sigs = signAndSendTransactions(arrayOf(tx)).signatures

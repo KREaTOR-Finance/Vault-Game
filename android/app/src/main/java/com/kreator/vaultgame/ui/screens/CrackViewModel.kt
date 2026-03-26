@@ -53,9 +53,13 @@ class CrackViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                vaultRepo.submitPaidAttempt(sender, vaultId, _state.value.guess)
+                val res = vaultRepo.submitPaidAttempt(sender, vaultId, _state.value.guess)
                 _state.update { it.copy(isSubmitting = false) }
-                onDone()
+                if (res.success) {
+                    onDone()
+                } else {
+                    _state.update { it.copy(error = res.message) }
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(isSubmitting = false, error = e.message ?: "Attempt failed") }
             }
@@ -69,9 +73,13 @@ class CrackViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                vaultRepo.submitFreeTry(sender, vaultId, _state.value.guess)
+                val res = vaultRepo.submitFreeTry(sender, vaultId, _state.value.guess)
                 _state.update { it.copy(isSubmitting = false) }
-                onDone()
+                if (res.success) {
+                    onDone()
+                } else {
+                    _state.update { it.copy(error = res.message) }
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(isSubmitting = false, error = e.message ?: "Attempt failed") }
             }
