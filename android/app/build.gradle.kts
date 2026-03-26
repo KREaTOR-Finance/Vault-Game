@@ -31,7 +31,7 @@ android {
             buildConfigField("String", "RPC_URI", "\"https://api.devnet.solana.com\"")
             buildConfigField("String", "SKR_MINT", "\"79iXs712Gt4VA7prim4EJkM7EnRr4wXgvwd1QCuAjuih\"")
             buildConfigField("String", "PROGRAM_ID", "\"7dEcm9oky2scx64qDAGEmRYgYovA5qr9qktmswdhTVN\"")
-            buildConfigField("String", "DIRECTORY_API_BASE", "\"https://vault-game-mu.vercel.app\"")
+            buildConfigField("String", "DIRECTORY_API_BASE", "\"https://caring-grace-production.up.railway.app\"")
         }
         create("mainnet") {
             dimension = "cluster"
