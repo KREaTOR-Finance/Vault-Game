@@ -14,6 +14,9 @@ function supabase() {
 const app = express();
 app.use(cors());
 
+// Serve static public assets (MWA branding icon, etc.)
+app.use(express.static(new URL('./public', import.meta.url).pathname));
+
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 // GET /api/v1/vaults?cluster=devnet|mainnet

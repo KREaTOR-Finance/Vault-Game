@@ -11,8 +11,8 @@ import com.solana.mobilewalletadapter.clientlib.TransactionResult
 class MwaWalletRepository(
     private val walletAdapter: MobileWalletAdapter = MobileWalletAdapter(
         connectionIdentity = ConnectionIdentity(
-            // Use a real hosted domain for identity (Solana Mobile / MWA).
-            identityUri = Uri.parse("https://vault-game-mu.vercel.app"),
+            // Use the Railway API domain for identity so debug APKs don't depend on Vercel.
+            identityUri = Uri.parse("https://caring-grace-production.up.railway.app"),
             // MWA requires this to be a RELATIVE uri (resolved against identityUri).
             iconUri = Uri.parse("branding/icon.png"),
             identityName = "VaultCrack",
