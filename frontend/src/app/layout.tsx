@@ -10,8 +10,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VAULT//MATRIX",
-  description: "On-chain vault console",
+  title: "VaultCrack",
+  description: "On-chain vault cracking game",
 };
 
 export default function RootLayout({

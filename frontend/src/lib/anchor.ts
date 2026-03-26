@@ -9,6 +9,11 @@ export function megaVaultPda(): PublicKey {
   return pda;
 }
 
+export function megaChallengePda(): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync([Buffer.from('mega_challenge')], VAULT_GAME_PROGRAM_ID);
+  return pda;
+}
+
 export function associatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey {
   const [pda] = PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
@@ -26,6 +31,14 @@ export function vaultPdaFromCount(vaultCount: bigint): PublicKey {
   const buf = Buffer.alloc(8);
   buf.writeBigUInt64LE(vaultCount);
   const [pda] = PublicKey.findProgramAddressSync([Buffer.from('vault'), buf], VAULT_GAME_PROGRAM_ID);
+  return pda;
+}
+
+export function playerRetentionPda(authority: PublicKey): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('retention'), authority.toBuffer()],
+    VAULT_GAME_PROGRAM_ID
+  );
   return pda;
 }
 
@@ -63,6 +76,17 @@ function u64LE(n: bigint): Buffer {
   // eslint-disable-next-line no-undef
   b.writeBigUInt64LE(n);
   return b;
+}
+
+function u32LE(n: number): Buffer {
+  const b = Buffer.alloc(4);
+  b.writeUInt32LE(n >>> 0);
+  return b;
+}
+
+function asBytes(secret: Uint8Array | Buffer | string): Buffer {
+  if (typeof secret === 'string') return Buffer.from(secret, 'utf8');
+  return Buffer.from(secret);
 }
 
 export async function createVaultIx(args: {
@@ -125,5 +149,224 @@ export async function createVaultIx(args: {
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data,
+  });
+}
+
+export async function setMegaChallengeVaultIx(args: {
+  authority: PublicKey;
+  vault: PublicKey;
+}): Promise<TransactionInstruction> {
+  const disc = await anchorDiscriminator('set_mega_challenge_vault');
+  const data = Buffer.concat([disc, args.vault.toBuffer()]);
+
+  return new TransactionInstruction({
+    programId: VAULT_GAME_PROGRAM_ID,
+    keys: [
+      { pubkey: globalStatePda(), isSigner: false, isWritable: true },
+      { pubkey: megaChallengePda(), isSigner: false, isWritable: true },
+      { pubkey: args.authority, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+}
+
+export async function makeGuessSolIx(args: {
+  player: PublicKey;
+  vault: PublicKey;
+}): Promise<TransactionInstruction> {
+  const disc = await anchorDiscriminator('make_guess_sol');
+
+  return new TransactionInstruction({
+    programId: VAULT_GAME_PROGRAM_ID,
+    keys: [
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: megaVaultPda(), isSigner: false, isWritable: true },
+      { pubkey: playerProfilePda(args.player), isSigner: false, isWritable: true },
+      { pubkey: playerRetentionPda(args.player), isSigner: false, isWritable: true },
+      { pubkey: args.player, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: disc,
+  });
+}
+
+export async function guessAndVerifySolIx(args: {
+  player: PublicKey;
+  vault: PublicKey;
+  secret: Uint8Array | Buffer | string;
+}): Promise<TransactionInstruction> {
+  const disc = await anchorDiscriminator('guess_and_verify_sol');
+  const secretBytes = asBytes(args.secret);
+  const data = Buffer.concat([disc, u32LE(secretBytes.length), secretBytes]);
+
+  return new TransactionInstruction({
+    programId: VAULT_GAME_PROGRAM_ID,
+    keys: [
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: megaVaultPda(), isSigner: false, isWritable: true },
+      { pubkey: playerProfilePda(args.player), isSigner: false, isWritable: true },
+      { pubkey: playerRetentionPda(args.player), isSigner: false, isWritable: true },
+      { pubkey: args.player, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+}
+
+export async function makeGuessSplIx(args: {
+  player: PublicKey;
+  vault: PublicKey;
+  feeMint: PublicKey;
+}): Promise<TransactionInstruction> {
+  const disc = await anchorDiscriminator('make_guess_spl');
+
+  const megaVault = megaVaultPda();
+
+  return new TransactionInstruction({
+    programId: VAULT_GAME_PROGRAM_ID,
+    keys: [
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: megaVault, isSigner: false, isWritable: true },
+      { pubkey: playerProfilePda(args.player), isSigner: false, isWritable: true },
+      { pubkey: playerRetentionPda(args.player), isSigner: false, isWritable: true },
+      { pubkey: args.player, isSigner: true, isWritable: true },
+      { pubkey: args.feeMint, isSigner: false, isWritable: false },
+      { pubkey: associatedTokenAddress(args.feeMint, args.player), isSigner: false, isWritable: true },
+      { pubkey: associatedTokenAddress(args.feeMint, megaVault), isSigner: false, isWritable: true },
+      { pubkey: associatedTokenAddress(args.feeMint, args.vault), isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: disc,
+  });
+}
+
+export async function guessAndVerifySplIx(args: {
+  player: PublicKey;
+  vault: PublicKey;
+  feeMint: PublicKey;
+  secret: Uint8Array | Buffer | string;
+}): Promise<TransactionInstruction> {
+  const disc = await anchorDiscriminator('guess_and_verify_spl');
+  const secretBytes = asBytes(args.secret);
+  const data = Buffer.concat([disc, u32LE(secretBytes.length), secretBytes]);
+
+  const megaVault = megaVaultPda();
+
+  return new TransactionInstruction({
+    programId: VAULT_GAME_PROGRAM_ID,
+    keys: [
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: megaVault, isSigner: false, isWritable: true },
+      { pubkey: playerProfilePda(args.player), isSigner: false, isWritable: true },
+      { pubkey: playerRetentionPda(args.player), isSigner: false, isWritable: true },
+      { pubkey: args.player, isSigner: true, isWritable: true },
+      { pubkey: args.feeMint, isSigner: false, isWritable: false },
+      { pubkey: associatedTokenAddress(args.feeMint, args.player), isSigner: false, isWritable: true },
+      { pubkey: associatedTokenAddress(args.feeMint, megaVault), isSigner: false, isWritable: true },
+      { pubkey: associatedTokenAddress(args.feeMint, args.vault), isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+}
+
+export async function dailyFreeTryIx(args: {
+  player: PublicKey;
+  vault: PublicKey;
+  secret: Uint8Array | Buffer | string;
+}): Promise<TransactionInstruction> {
+  const disc = await anchorDiscriminator('use_daily_free_try');
+  const secretBytes = asBytes(args.secret);
+  const data = Buffer.concat([disc, u32LE(secretBytes.length), secretBytes]);
+
+  return new TransactionInstruction({
+    programId: VAULT_GAME_PROGRAM_ID,
+    keys: [
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: playerProfilePda(args.player), isSigner: false, isWritable: true },
+      { pubkey: playerRetentionPda(args.player), isSigner: false, isWritable: true },
+      { pubkey: args.player, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+}
+
+export async function claimWinIx(args: {
+  player: PublicKey;
+  vault: PublicKey;
+  secret: Uint8Array | Buffer | string;
+}): Promise<TransactionInstruction> {
+  const disc = await anchorDiscriminator('claim_win');
+  const secretBytes = asBytes(args.secret);
+  const data = Buffer.concat([disc, u32LE(secretBytes.length), secretBytes]);
+
+  return new TransactionInstruction({
+    programId: VAULT_GAME_PROGRAM_ID,
+    keys: [
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: playerProfilePda(args.player), isSigner: false, isWritable: true },
+      { pubkey: playerRetentionPda(args.player), isSigner: false, isWritable: true },
+      { pubkey: args.player, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+}
+
+export async function claimPrizeIx(args: {
+  winner: PublicKey;
+  vault: PublicKey;
+  feeMint: PublicKey;
+}): Promise<TransactionInstruction> {
+  const disc = await anchorDiscriminator('claim_prize');
+
+  return new TransactionInstruction({
+    programId: VAULT_GAME_PROGRAM_ID,
+    keys: [
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: megaVaultPda(), isSigner: false, isWritable: true },
+      { pubkey: args.feeMint, isSigner: false, isWritable: false },
+      { pubkey: associatedTokenAddress(args.feeMint, args.vault), isSigner: false, isWritable: true },
+      { pubkey: associatedTokenAddress(args.feeMint, args.vault), isSigner: false, isWritable: true },
+      { pubkey: associatedTokenAddress(args.feeMint, args.winner), isSigner: false, isWritable: true },
+      { pubkey: args.winner, isSigner: true, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: disc,
+  });
+}
+
+export async function reclaimPrizeIx(args: {
+  creator: PublicKey;
+  vault: PublicKey;
+  feeMint: PublicKey;
+}): Promise<TransactionInstruction> {
+  const disc = await anchorDiscriminator('reclaim_prize');
+  const megaVault = megaVaultPda();
+
+  return new TransactionInstruction({
+    programId: VAULT_GAME_PROGRAM_ID,
+    keys: [
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: megaVault, isSigner: false, isWritable: true },
+      { pubkey: args.feeMint, isSigner: false, isWritable: false },
+      { pubkey: associatedTokenAddress(args.feeMint, args.vault), isSigner: false, isWritable: true },
+      { pubkey: associatedTokenAddress(args.feeMint, args.vault), isSigner: false, isWritable: true },
+      { pubkey: associatedTokenAddress(args.feeMint, args.creator), isSigner: false, isWritable: true },
+      { pubkey: associatedTokenAddress(args.feeMint, megaVault), isSigner: false, isWritable: true },
+      { pubkey: args.creator, isSigner: true, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: disc,
   });
 }

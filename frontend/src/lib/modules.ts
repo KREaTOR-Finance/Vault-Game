@@ -22,53 +22,32 @@ export type ConsoleModule = {
 
 export const CONSOLE_MODULES: ConsoleModule[] = [
   {
+    id: "crack",
+    label: "CRACK",
+    route: "/crack",
+    aliases: ["crack", "attempt", "play"],
+    description: "Primary gameplay loop",
+  },
+  {
     id: "enter",
     label: "ENTER",
     route: "/",
     aliases: ["enter", "home", "start"],
-    description: "Entry gate + rules + wallet connect",
+    description: "MWA wallet gate",
   },
   {
     id: "vaults",
     label: "VAULTS",
     route: "/vaults",
-    aliases: ["vaults", "ls", "list"],
-    description: "List vaults on-chain",
-  },
-  {
-    id: "create",
-    label: "CREATE",
-    route: "/create",
-    aliases: ["create", "new"],
-    description: "Create a new vault",
-  },
-  {
-    id: "crack",
-    label: "CRACK",
-    route: "/crack",
-    aliases: ["crack", "attempt"],
-    description: "Enter PIN / attempt crack",
+    aliases: ["vaults", "ls", "list", "hot"],
+    description: "Live vault list",
   },
   {
     id: "claim",
     label: "CLAIM",
     route: "/claim",
     aliases: ["claim", "collect"],
-    description: "Secure transfer console",
-  },
-  {
-    id: "cancel",
-    label: "CANCEL",
-    route: "/cancel",
-    aliases: ["cancel", "abort"],
-    description: "Cancel/refund (authority)",
-  },
-  {
-    id: "hints",
-    label: "HINTS",
-    route: "/hints",
-    aliases: ["hints", "intel"],
-    description: "Hints + redemption",
+    description: "Winner settlement",
   },
   {
     id: "profile",
@@ -76,6 +55,13 @@ export const CONSOLE_MODULES: ConsoleModule[] = [
     route: "/profile",
     aliases: ["profile", "me"],
     description: "Player dossier",
+  },
+  {
+    id: "create",
+    label: "CREATE",
+    route: "/create",
+    aliases: ["create", "new"],
+    description: "Create a new vault",
   },
   {
     id: "logs",
@@ -90,13 +76,6 @@ export const CONSOLE_MODULES: ConsoleModule[] = [
     route: "/help",
     aliases: ["help", "?"],
     description: "Manual + keybinds",
-  },
-  {
-    id: "config",
-    label: "CONFIG",
-    route: "/config",
-    aliases: ["config", "prefs"],
-    description: "Client-only visual prefs",
   },
 ];
 

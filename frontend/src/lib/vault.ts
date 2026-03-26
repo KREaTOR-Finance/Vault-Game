@@ -23,6 +23,8 @@ export type VaultState = {
   feeMint: PublicKey;
   totalFeesCollected: bigint;
   winnerFeePool: bigint;
+  winner: PublicKey | null;
+  settledAt: bigint | null;
   paidOut: boolean;
   bump: number;
 };
@@ -71,10 +73,16 @@ export function decodeVault(data: Buffer): VaultState {
   o += 8;
   const winnerFeePool = readU64LE(data, o);
   o += 8;
-  // winner: Option<Pubkey> (1 + 32)
-  o += 33;
-  // settled_at: Option<i64> (1 + 8)
-  o += 9;
+
+  const winnerTag = data.readUInt8(o);
+  o += 1;
+  const winner = winnerTag === 1 ? new PublicKey(data.subarray(o, o + 32)) : null;
+  o += 32;
+
+  const settledTag = data.readUInt8(o);
+  o += 1;
+  const settledAt = settledTag === 1 ? readI64LE(data, o) : null;
+  o += 8;
 
   const paidOut = data.readUInt8(o) === 1;
   o += 1;
@@ -95,6 +103,8 @@ export function decodeVault(data: Buffer): VaultState {
     feeMint,
     totalFeesCollected,
     winnerFeePool,
+    winner,
+    settledAt,
     paidOut,
     bump,
   };

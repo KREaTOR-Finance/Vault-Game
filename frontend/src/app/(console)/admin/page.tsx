@@ -3,7 +3,12 @@
 import { useMemo, useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
-import { anchorDiscriminator, globalStatePda, megaVaultPda } from '@/lib/anchor';
+import {
+  anchorDiscriminator,
+  globalStatePda,
+  megaVaultPda,
+  setMegaChallengeVaultIx,
+} from '@/lib/anchor';
 import { VAULT_GAME_PROGRAM_ID } from '@/lib/playerProfile';
 
 export default function AdminPage() {
@@ -32,7 +37,7 @@ export default function AdminPage() {
     }
 
     try {
-      setStatus('INITIALIZING GLOBAL STATE…');
+      setStatus('INITIALIZING GLOBAL STATE...');
 
       const disc = await anchorDiscriminator('initialize_global');
       const data = Buffer.concat([disc, vcMint.toBuffer()]);
@@ -73,18 +78,11 @@ export default function AdminPage() {
     }
 
     try {
-      setStatus('SETTING MEGA CHALLENGE VAULT…');
+      setStatus('SETTING MEGA CHALLENGE VAULT...');
 
-      const disc = await anchorDiscriminator('set_mega_challenge_vault');
-      const data = Buffer.concat([disc, megaPk.toBuffer()]);
-
-      const ix = new TransactionInstruction({
-        programId: VAULT_GAME_PROGRAM_ID,
-        keys: [
-          { pubkey: globalState, isSigner: false, isWritable: true },
-          { pubkey: publicKey, isSigner: true, isWritable: true },
-        ],
-        data,
+      const ix = await setMegaChallengeVaultIx({
+        authority: publicKey,
+        vault: megaPk,
       });
 
       const tx = new Transaction().add(ix);
@@ -104,7 +102,7 @@ export default function AdminPage() {
       </div>
 
       <div className="border border-matrix-dim/30 bg-black/30 p-3 text-xs text-matrix-dim">
-        Devnet helper. Initialize GlobalState + MegaVault PDA.
+        Devnet helper for global init and mega challenge target.
       </div>
 
       <div className="border border-matrix-dim/30 bg-black/30 p-3 text-sm">
@@ -136,9 +134,7 @@ export default function AdminPage() {
       </div>
 
       {status ? (
-        <div className="border border-matrix-dim/30 bg-black/30 px-3 py-2 text-xs text-matrix">
-          {status}
-        </div>
+        <div className="border border-matrix-dim/30 bg-black/30 px-3 py-2 text-xs text-matrix">{status}</div>
       ) : null}
 
       <div className="text-xs text-matrix-dim/70">
@@ -149,3 +145,4 @@ export default function AdminPage() {
     </div>
   );
 }
+

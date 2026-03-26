@@ -62,11 +62,14 @@ export default function GlobalAttemptBanner() {
           if (!programId?.equals(VAULT_GAME_PROGRAM_ID)) continue;
 
           // Best-effort mapping based on our known account ordering.
-          // make_guess_sol: [vault, mega_vault, player_profile, player, system_program]
-          // make_guess_spl: [vault, mega_vault, player_profile, player, fee_mint, ...]
+          // make_guess_sol: [vault, mega_vault, player_profile, player_retention, player, system_program]
+          // make_guess_spl: [vault, mega_vault, player_profile, player_retention, player, fee_mint, ...]
+          // guess_and_verify_*: same account ordering as make_guess_*
+          // use_daily_free_try: [vault, player_profile, player_retention, player, system_program]
           const acctIdxs: number[] = ix.accounts || [];
           const vault = acctIdxs[0] != null ? accountKeys[acctIdxs[0]] : undefined;
-          const player = acctIdxs[3] != null ? accountKeys[acctIdxs[3]] : undefined;
+          const playerIx = acctIdxs[4] != null ? 4 : 3;
+          const player = acctIdxs[playerIx] != null ? accountKeys[acctIdxs[playerIx]] : undefined;
 
           setItems((prev) => {
             const next = [{ sig, player: player?.toBase58(), vault: vault?.toBase58(), ts: Date.now() }, ...prev];
@@ -98,7 +101,15 @@ export default function GlobalAttemptBanner() {
         seen.current.add(sig);
         // Only attempt-ish: best-effort filter. (Anchor logs include "Instruction: MakeGuess" lines)
         const joined = (ev.logs || []).join('\n').toLowerCase();
-        if (!(joined.includes('makeguess') || joined.includes('make_guess'))) return;
+        if (
+          !(
+            joined.includes('makeguess') ||
+            joined.includes('make_guess') ||
+            joined.includes('guess_and_verify') ||
+            joined.includes('use_daily_free_try')
+          )
+        )
+          return;
         enrichFromTx(sig);
       },
       'confirmed'

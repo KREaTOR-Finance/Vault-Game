@@ -15,8 +15,6 @@ import {
   createDefaultAuthorizationResultCache,
   createDefaultWalletNotFoundHandler,
 } from '@solana-mobile/wallet-adapter-mobile';
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
-import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 
 // Default styles for WalletMultiButton modal
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -38,13 +36,10 @@ export default function SolanaProviders({ children }: { children: React.ReactNod
             mobileWalletAdapter as unknown as Parameters<typeof handleNotFound>[0]
           ),
         appIdentity: {
-          name: 'Vault Game',
+          name: 'VaultCrack',
           uri: 'https://vault-game.local',
         },
       }),
-      // Desktop defaults
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
     ];
   }, []);
 

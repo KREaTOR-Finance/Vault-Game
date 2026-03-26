@@ -3,14 +3,14 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-vault_game = "B1uj973FayJZYCHVJx3td57zMMBzg4n6UENB3bS24F3t"
+vault_game = "7dEcm9oky2scx64qDAGEmRYgYovA5qr9qktmswdhTVN"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "devnet"
-wallet = ".secrets/devnet-authority.json"
+wallet = "C:\\Users\\Buidl\\.config\\solana\\clawd-dev-wallet.json"
 
 [scripts]
 # kept minimal; we will add after scaffolding
