@@ -38,6 +38,16 @@ fun WalletStatusBar(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                wallet.error?.let {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

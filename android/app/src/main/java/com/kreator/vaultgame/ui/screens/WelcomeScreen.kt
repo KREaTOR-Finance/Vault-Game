@@ -34,15 +34,15 @@ fun WelcomeScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start
         ) {
-            Text("VAULT-GAME", style = MaterialTheme.typography.titleLarge)
+            Text("VAULTCRACK", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(10.dp))
-            Text("> Welcome to Sigma.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("> Solana Mobile alpha.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(18.dp))
 
             Surface(shape = MaterialTheme.shapes.large, tonalElevation = 2.dp) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("How it works", style = MaterialTheme.typography.titleMedium)
-                    Text("• Create vaults by depositing SKR (primary) or SOL (fallback).", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("• Create vaults by depositing SKR.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("• Attempts feed the Mega Vault (treasury rake) + the winner pool.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("• Crack it → claim immediately.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("• Daily Free Try: 1 per UTC day.", color = MaterialTheme.colorScheme.onSurfaceVariant)

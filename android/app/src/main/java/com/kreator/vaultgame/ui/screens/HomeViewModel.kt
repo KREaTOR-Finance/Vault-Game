@@ -36,7 +36,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val wallet = walletRepo.getWalletState()
             val all = vaultRepo.listVaults()
-            _state.update { it.copyWalletAndVaults(wallet, applyFilter(all, it.filter)) }
+            _state.update { it.copyWalletAndVaults(wallet.copy(error = null), applyFilter(all, it.filter)) }
         }
     }
 
@@ -55,7 +55,7 @@ class HomeViewModel(
 
     fun disconnect() {
         viewModelScope.launch {
-            val wallet = walletRepo.disconnect()
+            val wallet = walletRepo.disconnect().copy(error = null)
             val all = vaultRepo.listVaults()
             _state.update { it.copyWalletAndVaults(wallet, applyFilter(all, it.filter)) }
         }

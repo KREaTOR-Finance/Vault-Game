@@ -62,9 +62,9 @@ class LiveVaultRepository(
     private val directory: VaultDirectoryApi = VaultDirectoryApi(),
     private val walletAdapter: com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter = com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter(
         connectionIdentity = com.solana.mobilewalletadapter.clientlib.ConnectionIdentity(
-            identityUri = android.net.Uri.parse("https://vaultcrack.app"),
-            iconUri = android.net.Uri.parse("https://vaultcrack.app/icon.png"),
-            identityName = "Vault Crack",
+            identityUri = android.net.Uri.parse("https://vault-game-mu.vercel.app"),
+            iconUri = android.net.Uri.parse("https://vault-game-mu.vercel.app/favicon.ico"),
+            identityName = "VaultCrack",
         )
     ),
 ) : VaultRepository {

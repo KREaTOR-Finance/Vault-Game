@@ -11,9 +11,10 @@ import com.solana.mobilewalletadapter.clientlib.TransactionResult
 class MwaWalletRepository(
     private val walletAdapter: MobileWalletAdapter = MobileWalletAdapter(
         connectionIdentity = ConnectionIdentity(
-            identityUri = Uri.parse("https://vaultcrack.app"),
-            iconUri = Uri.parse("https://vaultcrack.app/icon.png"),
-            identityName = "Vault Crack",
+            // Use a real hosted domain for identity (Solana Mobile / MWA).
+            identityUri = Uri.parse("https://vault-game-mu.vercel.app"),
+            iconUri = Uri.parse("https://vault-game-mu.vercel.app/favicon.ico"),
+            identityName = "VaultCrack",
         )
     ),
     private val rpc: SolanaRpc = SolanaRpc(BuildConfig.RPC_URI),
@@ -24,7 +25,7 @@ class MwaWalletRepository(
     override suspend fun getWalletState(): WalletState {
         val addr = connectedAddress
         if (addr == null) {
-            return WalletState(connected = false, address = null, skrBalance = 0, solBalance = 0)
+            return WalletState(connected = false, address = null, skrBalance = 0, solBalance = 0, error = null)
         }
 
         val solLamports = rpc.getBalanceLamports(addr)
@@ -37,20 +38,44 @@ class MwaWalletRepository(
     }
 
     override suspend fun connect(sender: ActivityResultSender): WalletState {
-        return when (val result = walletAdapter.connect(sender)) {
+        // MWA connect may throw in some environments; never allow a crash on Solana Mobile.
+        val result = runCatching { walletAdapter.connect(sender) }.getOrElse { e ->
+            android.util.Log.e("VaultCrack", "MWA connect threw", e)
+            return WalletState(
+                connected = false,
+                address = null,
+                skrBalance = 0,
+                solBalance = 0,
+                error = "MWA connect error: ${e.javaClass.simpleName}: ${e.message ?: "(no message)"}",
+            )
+        }
+
+        return when (result) {
             is TransactionResult.Success -> {
                 val pubkeyBytes = result.authResult.publicKey
                 val pubkey = com.funkatronics.encoders.Base58.encodeToString(pubkeyBytes)
                 connectedAddress = pubkey
                 accountLabel = result.authResult.accountLabel
                 walletAdapter.authToken = result.authResult.authToken
-                getWalletState()
+                getWalletState().copy(error = null)
             }
             is TransactionResult.NoWalletFound -> {
-                WalletState(connected = false, address = null, skrBalance = 0, solBalance = 0)
+                WalletState(
+                    connected = false,
+                    address = null,
+                    skrBalance = 0,
+                    solBalance = 0,
+                    error = "No MWA wallet found. Install/open Phantom or Solflare (Seed Vault is key storage, not the wallet UI).",
+                )
             }
             is TransactionResult.Failure -> {
-                WalletState(connected = false, address = null, skrBalance = 0, solBalance = 0)
+                WalletState(
+                    connected = false,
+                    address = null,
+                    skrBalance = 0,
+                    solBalance = 0,
+                    error = result.message ?: "Wallet connection failed",
+                )
             }
         }
     }

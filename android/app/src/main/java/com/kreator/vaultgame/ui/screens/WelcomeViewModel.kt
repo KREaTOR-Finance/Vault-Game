@@ -28,7 +28,12 @@ class WelcomeViewModel(
             _state.update { it.copy(phase = WelcomePhase.CONNECTING, error = null) }
             val wallet = walletRepo.connect(sender)
             if (!wallet.connected) {
-                _state.update { it.copy(phase = WelcomePhase.IDLE, error = "Wallet connection failed. Make sure a MWA wallet is installed.") }
+                _state.update {
+                    it.copy(
+                        phase = WelcomePhase.IDLE,
+                        error = wallet.error ?: "Wallet connection failed. Open Phantom and approve the request.",
+                    )
+                }
                 return@launch
             }
 

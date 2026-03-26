@@ -56,6 +56,8 @@ data class WalletState(
     val address: String?,
     val skrBalance: Long,
     val solBalance: Long,
+    // For alpha debugging on Solana Mobile: surface MWA connection errors without requiring Logcat.
+    val error: String? = null,
 )
 
 data class SwapRequirement(
