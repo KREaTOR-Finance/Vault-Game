@@ -13,7 +13,8 @@ class MwaWalletRepository(
         connectionIdentity = ConnectionIdentity(
             // Use a real hosted domain for identity (Solana Mobile / MWA).
             identityUri = Uri.parse("https://vault-game-mu.vercel.app"),
-            iconUri = Uri.parse("https://vault-game-mu.vercel.app/favicon.ico"),
+            // MWA requires this to be a RELATIVE uri (resolved against identityUri).
+            iconUri = Uri.parse("branding/icon.png"),
             identityName = "VaultCrack",
         )
     ),

@@ -63,7 +63,8 @@ class LiveVaultRepository(
     private val walletAdapter: com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter = com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter(
         connectionIdentity = com.solana.mobilewalletadapter.clientlib.ConnectionIdentity(
             identityUri = android.net.Uri.parse("https://vault-game-mu.vercel.app"),
-            iconUri = android.net.Uri.parse("https://vault-game-mu.vercel.app/favicon.ico"),
+            // MWA requires this to be a RELATIVE uri (resolved against identityUri).
+            iconUri = android.net.Uri.parse("branding/icon.png"),
             identityName = "VaultCrack",
         )
     ),
